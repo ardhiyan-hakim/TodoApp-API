@@ -1,23 +1,43 @@
 import { nanoid } from "nanoid";
 import express from "express";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const app = express();
+const router = express.Router();
 
+// Connecting Mongoose to MongoDB
 mongoose
   .connect("mongodb://localhost:27017/todoapp")
   .then(() => console.log("Connected to MongoDB at localhost:27017"))
   .catch((err) => console.log("Could not connect to MongoDB...", err));
 
+// Schema to store data in Database
 const todoSchema = new mongoose.Schema(
   {
-    id: { type: String, unique: true, required: true},
+    id: { type: String, required: true, unique: true },
     task: { type: String, required: true },
     completed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+});
+
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+userSchema.methods.matchPassword = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+// Cleanup JSON Response for todo and user Schema
 todoSchema.set("toJSON", {
   transform: (doc, ret) => {
     // Remove unnecessary internal Mongoose properties
@@ -32,11 +52,25 @@ todoSchema.set("toJSON", {
   },
 });
 
-const Todo = mongoose.model("Todo", todoSchema);
+userSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    delete ret._id;
+    delete ret.__v;
+    delete ret.$__;
+    delete ret.$options;
+    delete ret.$locals;
+    delete ret.$isNew;
+    delete ret.password;
+  },
+});
 
+const Todo = mongoose.model("Todo", todoSchema);
+const User = mongoose.model("User", userSchema);
+
+// Middleware to parse JSON bodies
 app.use(express.json());
 
-app.get("/todos", async (req, res) => {
+router.get("/todos", async (req, res) => {
   try {
     const todos = await Todo.find();
     return res.status(200).json(todos);
@@ -45,7 +79,7 @@ app.get("/todos", async (req, res) => {
   }
 });
 
-app.get("/todos/:id", async (req, res) => {
+router.get("/todos/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const todo = await Todo.findOne({ id: id });
@@ -57,7 +91,7 @@ app.get("/todos/:id", async (req, res) => {
   }
 });
 
-app.post("/todos", async (req, res) => {
+router.post("/todos", async (req, res) => {
   const { task, completed } = req.body;
   if (!task) return res.status(400).json({ message: "Task cannot be empty" });
 
@@ -69,7 +103,8 @@ app.post("/todos", async (req, res) => {
 
   try {
     const isTodoExist = await Todo.findOne({ id: newTodo.id });
-    if(isTodoExist) return res.status(500).json({message: "System Generated Duplicate ID"})
+    if (isTodoExist)
+      return res.status(500).json({ message: "System Generated Duplicate ID" });
 
     const savedTodo = await newTodo.save();
     res.status(201).json(savedTodo);
@@ -78,11 +113,11 @@ app.post("/todos", async (req, res) => {
   }
 });
 
-app.put("/todos/:id", async (req, res) => {
+router.put("/todos/:id", async (req, res) => {
   const { id } = req.params;
   const { task, completed } = req.body;
 
-   if(!task) return res.status(400).json({ message: "Task cannot be empty" });
+  if (!task) return res.status(400).json({ message: "Task cannot be empty" });
 
   try {
     const updatedTodo = await Todo.findOneAndUpdate(
@@ -91,25 +126,29 @@ app.put("/todos/:id", async (req, res) => {
       { new: true }
     );
 
-    if (!updatedTodo) return res.status(404).json({ message: "Todo not found" });
+    if (!updatedTodo)
+      return res.status(404).json({ message: "Todo not found" });
     res.json(updatedTodo);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-app.delete("/todos/:id", async (req, res) => {
+router.delete("/todos/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const deletedTodo = await Todo.findOneAndDelete(id);
-    if (!deletedTodo) return res.status(404).json({ message: "Todo not found" });
+    if (!deletedTodo)
+      return res.status(404).json({ message: "Todo not found" });
 
     res.status(200).json({ message: "Todo is successfully deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+app.use("/api", router);
 
 const PORT = 3000;
 app.listen(PORT, () => {
