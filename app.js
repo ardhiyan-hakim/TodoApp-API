@@ -5,12 +5,18 @@ import bcrypt from "bcryptjs";
 
 const app = express();
 const router = express.Router();
+const PORT = 3000;
+
+// Middleware to parse JSON bodies
+app.use(express.json());
 
 // Connecting Mongoose to MongoDB
 mongoose
   .connect("mongodb://localhost:27017/todoapp")
   .then(() => console.log("Connected to MongoDB at localhost:27017"))
   .catch((err) => console.log("Could not connect to MongoDB...", err));
+
+app.use("/api", router);
 
 // Schema to store data in Database
 const todoSchema = new mongoose.Schema(
@@ -52,6 +58,8 @@ todoSchema.set("toJSON", {
   },
 });
 
+const Todo = mongoose.model("Todo", todoSchema);
+
 userSchema.set("toJSON", {
   transform: (doc, ret) => {
     delete ret._id;
@@ -64,12 +72,9 @@ userSchema.set("toJSON", {
   },
 });
 
-const Todo = mongoose.model("Todo", todoSchema);
 const User = mongoose.model("User", userSchema);
 
-// Middleware to parse JSON bodies
-app.use(express.json());
-
+// Todo Routes
 router.get("/todos", async (req, res) => {
   try {
     const todos = await Todo.find();
@@ -148,9 +153,16 @@ router.delete("/todos/:id", async (req, res) => {
   }
 });
 
-app.use("/api", router);
+app.get("/", (req, res) => {
+  res.send("Welcome to the Todo App API!");
+});
 
-const PORT = 3000;
+// Error Handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is currently running at http://localhost:${PORT}`);
 });
