@@ -74,6 +74,26 @@ userSchema.set("toJSON", {
 
 const User = mongoose.model("User", userSchema);
 
+// User Routes
+router.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const userExists = await User.findOne({ username });
+
+    if (userExists) {
+      return res.status(400).json({ message: "User already exis" });
+    }
+
+    const user = new User({ username, password });
+    await user.save();
+    res.status(201).json({ message: "User created successfully" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error registering user", error: err.message });
+  }
+});
+
 // Todo Routes
 router.get("/todos", async (req, res) => {
   try {
