@@ -7,7 +7,6 @@ import dotenv from "dotenv";
 
 const app = express();
 const router = express.Router();
-const PORT = 3000;
 
 dotenv.config();
 
@@ -16,7 +15,7 @@ app.use(express.json());
 
 // Connecting Mongoose to MongoDB
 mongoose
-  .connect("mongodb://localhost:27017/todoapp")
+  .connect(`mongodb://localhost:${process.env.MONGO_URI}/todoapp`)
   .then(() => console.log("Connected to MongoDB at localhost:27017"))
   .catch((err) => console.log("Could not connect to MongoDB...", err));
 
@@ -85,7 +84,7 @@ router.post("/register", async (req, res) => {
     const userExists = await User.findOne({ username });
 
     if (userExists) {
-      return res.status(400).json({ message: "User already exis" });
+      return res.status(400).json({ message: "User already exist" });
     }
 
     const user = new User({ username, password });
@@ -98,6 +97,25 @@ router.post("/register", async (req, res) => {
   }
 });
 
+router.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+
+    if (!user || !(await user.matchPassword(password))) {
+      return res
+        .status(401)
+        .json({ message: "Please enter the correct username and password" });
+    }
+
+    const token = jwt.sign({ id: user.id }, `${process.env.JWT_SECRET}`, {
+      expiresIn: "12h",
+    });
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({message: "Error logging in", error: err.message})
+  }
+});
 // Todo Routes
 router.get("/todos", async (req, res) => {
   try {
@@ -187,6 +205,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is currently running at http://localhost:${PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(
+    `Server is currently running at http://localhost:${process.env.PORT}`
+  );
 });
