@@ -2,10 +2,14 @@ import { nanoid } from "nanoid";
 import express from "express";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
 const app = express();
 const router = express.Router();
 const PORT = 3000;
+
+dotenv.config();
 
 // Middleware to parse JSON bodies
 app.use(express.json());
