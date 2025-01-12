@@ -108,14 +108,15 @@ router.post("/login", async (req, res) => {
         .json({ message: "Please enter the correct username and password" });
     }
 
-    const token = jwt.sign({ id: user.id }, `${process.env.JWT_SECRET}`, {
-      expiresIn: "12h",
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "15m",
     });
     res.json({ token });
   } catch (err) {
-    res.status(500).json({message: "Error logging in", error: err.message})
+    res.status(500).json({ message: "Error logging in" });
   }
 });
+
 // Todo Routes
 router.get("/todos", async (req, res) => {
   try {
