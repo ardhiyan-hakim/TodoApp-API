@@ -50,7 +50,9 @@ router.post("/logout", async (req, res) => {
 
   try {
     const decoded = jwt.decode(token);
-    console.log(decoded);
+    if (!decoded)
+      return res.status(400).json({ message: "Token not provided" });
+
     const expirationTime = new Date(decoded.exp * 1000);
 
     await Blacklist.create({ token, expiresAt: expirationTime });
