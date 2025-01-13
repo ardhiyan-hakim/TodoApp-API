@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Blacklist from "../models/Blacklist.js";
 
 const router = express.Router();
 
@@ -35,11 +36,29 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "15m",
+      expiresIn: "30m",
     });
     res.json({ token });
   } catch (err) {
     res.status(500).json({ message: "Error logging in" });
+  }
+});
+
+router.post("/logout", async (req, res) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) return res.status(400).json({ message: "Token not provided" });
+
+  try {
+    const decoded = jwt.decode(token);
+    console.log(decoded);
+    const expirationTime = new Date(decoded.exp * 1000);
+
+    await Blacklist.create({ token, expiresAt: expirationTime });
+    res.status(200).json({ message: "User logged out successfully" });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Error logging out", error: err.message });
   }
 });
 
