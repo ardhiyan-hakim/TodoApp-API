@@ -5,6 +5,28 @@ import Todo from "../models/Todo.js";
 
 const router = express.Router();
 
+const protect = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+
+  if (!token)
+    return res
+      .status(401)
+      .json({ message: "No token provided, access denied" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ message: "Token has expired. Please re-login" });
+    }
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
 router.get("/", async (req, res) => {
   try {
     const todos = await Todo.find();
@@ -26,7 +48,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", protect, async (req, res) => {
   const { task, completed } = req.body;
   if (!task) return res.status(400).json({ message: "Task cannot be empty" });
 
@@ -48,7 +70,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
   const { id } = req.params;
   const { task, completed } = req.body;
 
@@ -69,7 +91,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", protect, async (req, res) => {
   const { id } = req.params;
 
   try {
