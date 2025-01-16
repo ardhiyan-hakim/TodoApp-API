@@ -1,20 +1,28 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 
 import userRoutes from "./routes/userRoutes.js";
 import todoRoutes from "./routes/todoRoutes.js";
 
 const app = express();
-const router = express.Router();
-
 dotenv.config();
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 60 * 100,
+  max: 150,
+  message: "Maximum request exceeded. Please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Middleware to parse JSON bodies
 app.use(express.json());
 
 app.use("/api/user", userRoutes);
 app.use("/api/todos", todoRoutes);
+app.use(apiLimiter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Todo App API!");
