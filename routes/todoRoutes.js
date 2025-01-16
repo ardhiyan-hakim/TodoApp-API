@@ -1,9 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 
-import Todo from "../models/Todo.js";
 import Blacklist from "../models/Blacklist.js";
-import { todoSchema } from "../utils/validationSchemas.js";
 import {
   getTodo,
   getTodoById,
