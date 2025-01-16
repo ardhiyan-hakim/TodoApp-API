@@ -1,10 +1,17 @@
 import express from "express";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
+import Joi from "joi";
+
 import Todo from "../models/Todo.js";
 import Blacklist from "../models/Blacklist.js";
 
 const router = express.Router();
+
+const todoSchema = Joi.object({
+  task: Joi.string().max(60).required(),
+  completed: Joi.boolean().default(false),
+});
 
 const protect = async (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
@@ -29,7 +36,7 @@ const protect = async (req, res, next) => {
         .status(401)
         .json({ message: "Token has expired. Please re-login" });
     }
-    
+
     return res.status(401).json({ message: "Invalid token" });
   }
 };
@@ -56,16 +63,19 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", protect, async (req, res) => {
-  const { task, completed } = req.body;
-  if (!task) return res.status(400).json({ message: "Task cannot be empty" });
-
-  const newTodo = new Todo({
-    id: nanoid(12),
-    task,
-    completed: completed || false,
-  });
+  const { error } = todoSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
 
   try {
+    const { task, completed } = req.body;
+    if (!task) return res.status(400).json({ message: "Task cannot be empty" });
+
+    const newTodo = new Todo({
+      id: nanoid(12),
+      task,
+      completed: completed || false,
+    });
+
     const isTodoExist = await Todo.findOne({ id: newTodo.id });
     if (isTodoExist)
       return res.status(500).json({ message: "System Generated Duplicate ID" });
@@ -78,12 +88,14 @@ router.post("/", protect, async (req, res) => {
 });
 
 router.put("/:id", protect, async (req, res) => {
-  const { id } = req.params;
-  const { task, completed } = req.body;
-
-  if (!task) return res.status(400).json({ message: "Task cannot be empty" });
+  const { error } = todoSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
 
   try {
+    const { id } = req.params;
+    const { task, completed } = req.body;
+    if (!task) return res.status(400).json({ message: "Task cannot be empty" });
+
     const updatedTodo = await Todo.findOneAndUpdate(
       { id: id },
       { task, completed },
@@ -99,9 +111,9 @@ router.put("/:id", protect, async (req, res) => {
 });
 
 router.delete("/:id", protect, async (req, res) => {
-  const { id } = req.params;
-
   try {
+    const { id } = req.params;
+
     const deletedTodo = await Todo.findOneAndDelete(id);
     if (!deletedTodo)
       return res.status(404).json({ message: "Todo not found" });

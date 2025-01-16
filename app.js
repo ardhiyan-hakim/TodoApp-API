@@ -11,7 +11,7 @@ dotenv.config();
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 60 * 100,
-  max: 150,
+  max: 175,
   message: "Maximum request exceeded. Please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
