@@ -1,16 +1,11 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import Joi from "joi";
 
 import User from "../models/User.js";
 import Blacklist from "../models/Blacklist.js";
+import { userSchema } from "../utils/validationSchemas.js";
 
 const router = express.Router();
-
-const userSchema = Joi.object({
-  username: Joi.string().min(6).max(30).required(),
-  password: Joi.string().min(8).required(),
-});
 
 router.post("/register", async (req, res) => {
   const { error } = userSchema.validate(req.body);

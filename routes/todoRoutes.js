@@ -1,17 +1,12 @@
 import express from "express";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
-import Joi from "joi";
 
 import Todo from "../models/Todo.js";
 import Blacklist from "../models/Blacklist.js";
+import { todoSchema } from "../utils/validationSchemas.js";
 
 const router = express.Router();
-
-const todoSchema = Joi.object({
-  task: Joi.string().max(60).required(),
-  completed: Joi.boolean().default(false),
-});
 
 const protect = async (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
